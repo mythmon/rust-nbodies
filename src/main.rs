@@ -3,36 +3,45 @@ extern crate graphics;
 extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate num;
+extern crate rand;
 
 mod vector;
 mod particle;
+mod nbody;
+mod trail;
+mod camera;
 
 use piston::window::WindowSettings;
 use piston::event_loop::*;
-use piston::input::*;
+use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
 use graphics::context::Context;
-use graphics::types::{Rectangle};
+use rand::Rng;
 
 use self::vector::Vec2;
 use self::particle::Particle;
+use self::nbody::NBody;
+use self::camera::Camera;
 
 struct Game {
     gl: GlGraphics,
-    particles: Vec<Particle>,
-    bounds: Rectangle,
+    children: Vec<Box<GameObject>>,
     prev_dt: Option<f64>,
+    camera: Camera,
 }
 
 impl Game {
     fn render(&mut self, args: &RenderArgs) {
-        let particles = self.particles.iter();
+        let particles = self.children.iter();
+        let camera = self.camera;
         self.gl.draw(args.viewport(), |context: Context, gl: &mut GlGraphics| {
             graphics::clear(graphics::color::BLACK, gl);
+            let mut context = context;
+            context.transform = camera.apply(context.transform);
 
             for particle in particles {
-                particle.render(args, context, gl);
+                particle.render(context, gl);
             }
         });
     }
@@ -46,17 +55,7 @@ impl Game {
             },
         };
 
-        let center = Vec2::new(self.bounds[2] / 2.0, self.bounds[3] / 2.0);
-        let center_mass = 10000.0;
-        let big_g = 100.0;
-        let particle_mass = 10.0;
-
-        for mut p in &mut self.particles {
-            let dist_vec = center - p.pos;
-            let dist_squared = dist_vec.length_squared();
-            let grav_mag = big_g * center_mass * particle_mass * dist_squared.recip();
-            let grav = dist_vec.normal() * grav_mag;
-            p.apply_force(grav);
+        for mut p in &mut self.children {
             p.update(&ctx);
         }
     }
@@ -67,11 +66,8 @@ struct UpdateContext {
     prev_dt: f64,
 }
 
-trait Render {
-    fn render(&self, args: &RenderArgs, ctx: Context, gl: &mut GlGraphics);
-}
-
-trait Update {
+trait GameObject {
+    fn render(&self, ctx: Context, gl: &mut GlGraphics);
     fn update(&mut self, context: &UpdateContext);
 }
 
@@ -91,18 +87,27 @@ fn main() {
         .build()
         .unwrap();
 
+    let mut particles = vec![];
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..4 {
+        particles.push(Particle::new(
+            [rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), 1.0],
+            Vec2::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-400.0, 400.0)),
+            Vec2::new(rng.gen_range(-2.0, 2.0), rng.gen_range(-2.0, 2.0)),
+            // Vec2::zero(),
+            rng.gen_range(30.0, 200.0),
+        ));
+    }
+
+    let nbody = NBody::new(particles);
+
     // Create a new game and run it.
     let mut game = Game {
         gl: GlGraphics::new(opengl),
-        bounds: [0.0, 0.0, width as f64, height as f64],
         prev_dt: None,
-        particles: vec![
-            Particle::new(
-                [1.0, 0.0, 0.0, 1.0],
-                Vec2::new(20.0, height as f64 / 2.0),
-                Vec2::new(0.0, 1.0),
-            ),
-        ],
+        children: vec![Box::new(nbody)],
+        camera: Camera::new(Vec2::new(400.0, 400.0), 0.1),
     };
 
     for e in window.events() {
