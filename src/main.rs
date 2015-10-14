@@ -8,8 +8,9 @@ extern crate rand;
 mod vector;
 mod particle;
 mod nbody;
-mod trail;
 mod camera;
+
+use std::f64::consts::PI;
 
 use piston::window::WindowSettings;
 use piston::event_loop::*;
@@ -18,6 +19,7 @@ use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
 use graphics::context::Context;
 use rand::Rng;
+// use num::Zero;
 
 use self::vector::Vec2;
 use self::particle::Particle;
@@ -90,14 +92,29 @@ fn main() {
     let mut particles = vec![];
     let mut rng = rand::thread_rng();
 
-    for _ in 0..4 {
+    for _ in 0..100 {
+        let theta = rng.gen_range(0.0, 2.0 * PI);
+        let dir = Vec2::new(theta.cos(), theta.sin());
+        let distance: f64 = rng.gen_range(100.0, 4500.0);
+        let mass = rng.gen_range(100.0, 200.0);
+        let momentum = rng.gen_range(1.0, 4.0) * distance.sqrt();
+        // let momentum = 0.0;
+        let speed = momentum / mass;
+
         particles.push(Particle::new(
             [rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), 1.0],
-            Vec2::new(rng.gen_range(-400.0, 400.0), rng.gen_range(-400.0, 400.0)),
-            Vec2::new(rng.gen_range(-2.0, 2.0), rng.gen_range(-2.0, 2.0)),
-            // Vec2::zero(),
-            rng.gen_range(30.0, 200.0),
+            dir * distance,
+            dir.normal() * speed,
+            mass,
         ));
+
+        // particles.push(Particle::new(
+        //     [rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), 1.0],
+        //     Vec2::new(rng.gen_range(-2000.0, 2000.0), rng.gen_range(-2000.0, 2000.0)),
+        //     // Vec2::new(rng.gen_range(-2.0, 2.0), rng.gen_range(-2.0, 2.0)),
+        //     Vec2::zero(),
+        //     rng.gen_range(30.0, 200.0),
+        // ));
     }
 
     let nbody = NBody::new(particles);
@@ -107,7 +124,7 @@ fn main() {
         gl: GlGraphics::new(opengl),
         prev_dt: None,
         children: vec![Box::new(nbody)],
-        camera: Camera::new(Vec2::new(400.0, 400.0), 0.1),
+        camera: Camera::new(Vec2::new(400.0, 400.0), 0.05),
     };
 
     for e in window.events() {

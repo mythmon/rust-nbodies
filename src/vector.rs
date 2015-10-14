@@ -13,9 +13,14 @@ impl Vec2 {
         Vec2 { x: x, y: y }
     }
 
-    pub fn normal(&self) -> Vec2 {
+    pub fn unit(&self) -> Vec2 {
         let len = self.length();
         Vec2::new(self.x / len, self.y / len)
+    }
+
+    pub fn normal(&self) -> Vec2 {
+        let unit = self.unit();
+        Vec2::new(unit.y, -unit.x)
     }
 
     pub fn length(&self) -> f64 {
@@ -69,6 +74,14 @@ impl ops::Mul<Vec2> for f64 {
 
     fn mul(self, rhs: Vec2) -> Vec2 {
         rhs * self
+    }
+}
+
+impl ops::Mul<Vec2> for Vec2 {
+    type Output = f64;
+
+    fn mul(self, rhs: Vec2) -> f64 {
+        self.x * rhs.x + self.y * rhs.y
     }
 }
 

@@ -18,9 +18,9 @@ pub struct Particle {
     pub color: Color,
     pub pos: Vec2,
     pub mass: f64,
-    prev_pos: Vec2,
-    accel: Vec2,
-    radius: f64,
+    pub radius: f64,
+    pub prev_pos: Vec2,
+    pub accel: Vec2,
 }
 
 impl Particle {
@@ -31,7 +31,7 @@ impl Particle {
             prev_pos: pos - vel,
             accel: Vec2::zero(),
             mass: mass,
-            radius: mass.sqrt(),
+            radius: mass.sqrt() * 3.0,
         }
     }
 
