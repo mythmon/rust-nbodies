@@ -11,7 +11,7 @@ use graphics::Transformed;
 use num::traits::Zero;
 
 use super::vector::Vec2;
-use super::{GameObject, UpdateContext};
+use super::game::{GameObject, UpdateContext};
 
 #[derive(Debug, Clone)]
 pub struct Particle {

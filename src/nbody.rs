@@ -11,7 +11,7 @@ use graphics::context::Context;
 
 use super::particle::Particle;
 // use super::vector::Vec2;
-use super::{GameObject, UpdateContext};
+use super::game::{GameObject, UpdateContext};
 
 #[derive(Debug, Clone)]
 pub struct NBody {

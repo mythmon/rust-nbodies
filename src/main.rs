@@ -9,69 +9,22 @@ mod vector;
 mod particle;
 mod nbody;
 mod camera;
+mod game;
 
 use std::f64::consts::PI;
 
 use piston::window::WindowSettings;
 use piston::event_loop::*;
-use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
+use piston::input::{Input, Event};
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
-use graphics::context::Context;
 use rand::Rng;
-// use num::Zero;
 
 use self::vector::Vec2;
 use self::particle::Particle;
 use self::nbody::NBody;
 use self::camera::Camera;
-
-struct Game {
-    gl: GlGraphics,
-    children: Vec<Box<GameObject>>,
-    prev_dt: Option<f64>,
-    camera: Camera,
-}
-
-impl Game {
-    fn render(&mut self, args: &RenderArgs) {
-        let particles = self.children.iter();
-        let camera = self.camera;
-        self.gl.draw(args.viewport(), |context: Context, gl: &mut GlGraphics| {
-            graphics::clear(graphics::color::BLACK, gl);
-            let mut context = context;
-            context.transform = camera.apply(context.transform);
-
-            for particle in particles {
-                particle.render(context, gl);
-            }
-        });
-    }
-
-    fn update(&mut self, args: &UpdateArgs) {
-        let ctx = UpdateContext {
-            dt: args.dt,
-            prev_dt: match self.prev_dt {
-                Some(prev_dt) => prev_dt,
-                None => args.dt,
-            },
-        };
-
-        for mut p in &mut self.children {
-            p.update(&ctx);
-        }
-    }
-}
-
-struct UpdateContext {
-    dt: f64,
-    prev_dt: f64,
-}
-
-trait GameObject {
-    fn render(&self, ctx: Context, gl: &mut GlGraphics);
-    fn update(&mut self, context: &UpdateContext);
-}
+use self::game::Game;
 
 fn main() {
     // Change this to OpenGL::V2_1 if not working.
@@ -98,7 +51,6 @@ fn main() {
         let distance: f64 = rng.gen_range(100.0, 4500.0);
         let mass = rng.gen_range(100.0, 200.0);
         let momentum = rng.gen_range(1.0, 4.0) * distance.sqrt();
-        // let momentum = 0.0;
         let speed = momentum / mass;
 
         particles.push(Particle::new(
@@ -107,33 +59,33 @@ fn main() {
             dir.normal() * speed,
             mass,
         ));
-
-        // particles.push(Particle::new(
-        //     [rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), rng.gen_range(0.5, 1.0), 1.0],
-        //     Vec2::new(rng.gen_range(-2000.0, 2000.0), rng.gen_range(-2000.0, 2000.0)),
-        //     // Vec2::new(rng.gen_range(-2.0, 2.0), rng.gen_range(-2.0, 2.0)),
-        //     Vec2::zero(),
-        //     rng.gen_range(30.0, 200.0),
-        // ));
     }
 
-    let nbody = NBody::new(particles);
-
     // Create a new game and run it.
-    let mut game = Game {
-        gl: GlGraphics::new(opengl),
-        prev_dt: None,
-        children: vec![Box::new(nbody)],
-        camera: Camera::new(Vec2::new(400.0, 400.0), 0.05),
-    };
+    let camera = Camera::new(Vec2::new(400.0, 400.0), 0.05);
+    let mut game = Game::new(GlGraphics::new(opengl), camera);
+    game.add_child(NBody::new(particles));
 
-    for e in window.events() {
-        if let Some(r) = e.render_args() {
-            game.render(&r);
-        }
+    for e in window.events().ups(60).max_fps(60) {
 
-        if let Some(u) = e.update_args() {
-            game.update(&u);
+        match e {
+            Event::Input(Input::Press(button)) => {
+                game.key_press(button);
+            }
+
+            Event::Input(Input::Release(button)) => {
+                game.key_release(button);
+            }
+
+            Event::Render(args) => {
+                game.render(&args);
+            }
+
+            Event::Update(args) => {
+                game.update(&args);
+            }
+
+            _ => {}
         }
     }
 }
